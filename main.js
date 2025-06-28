@@ -57,7 +57,8 @@ renderer.setClearColor(0x000000, 1); // pure black background
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
-controls.screenSpacePanning = false;
+controls.screenSpacePanning = true;
+controls.enablePan = true;
 controls.minDistance = 3;
 controls.maxDistance = 20;
 controls.maxPolarAngle = Math.PI / 2;
@@ -353,11 +354,13 @@ window.addEventListener('wheel', (ev) => {
 
 // Mouse events for drag interaction
 window.addEventListener('mousedown', (ev) => {
-  isDragging = true;
-  dragStartX = ev.clientX;
-  dragStartY = ev.clientY;
-  controls.enabled = false;
-  lastDragDirection = 0;
+  if (ev.button === 0 && ev.shiftKey) {
+    isDragging = true;
+    dragStartX = ev.clientX;
+    dragStartY = ev.clientY;
+    controls.enabled = false;
+    lastDragDirection = 0;
+  }
 });
 
 window.addEventListener('mousemove', (ev) => {
@@ -581,5 +584,39 @@ window.addEventListener('mousemove', (ev) => {
       lastHighlightedArtwork.material.emissive.set(0x000000);
       lastHighlightedArtwork = null;
     }
+  }
+});
+
+// Custom drag-to-move (free movement) logic
+let isCustomDragging = false;
+let lastDragX = 0;
+let lastDragY = 0;
+
+window.addEventListener('mousedown', (ev) => {
+  if (ev.button === 0 && ev.shiftKey) {
+    isCustomDragging = true;
+    lastDragX = ev.clientX;
+    lastDragY = ev.clientY;
+    controls.enabled = false;
+  }
+});
+
+window.addEventListener('mousemove', (ev) => {
+  if (isCustomDragging) {
+    const deltaX = ev.clientX - lastDragX;
+    const deltaY = ev.clientY - lastDragY;
+    // Move camera in local X/Y plane
+    const moveSpeed = 0.01;
+    camera.position.x -= deltaX * moveSpeed;
+    camera.position.y += deltaY * moveSpeed;
+    lastDragX = ev.clientX;
+    lastDragY = ev.clientY;
+  }
+});
+
+window.addEventListener('mouseup', (ev) => {
+  if (isCustomDragging) {
+    isCustomDragging = false;
+    controls.enabled = true;
   }
 });
