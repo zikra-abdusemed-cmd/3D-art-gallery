@@ -8,30 +8,30 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import * as TWEEN from 'tween';
 
 const images = [
-  'socrates.jpg',
-  'stars.jpg',
-  'wave.jpg',
-  'spring.jpg',
-  'mountain.jpg',
-  'sunday.jpg'
+  'AIDA_MULUNEH_I-IN-THE-OTHER_2017.jpg',
+  'AIDA_MULUNEH_BOTH-SIDES_2017.jpg',
+  'THE-DEW-AT-DAWN_19_AIDA_MULUNEH_FN_60X80-scaled.jpg',
+  'AIDA-MULUNEH_The-barriers-within_2021-scaled.jpg',
+  'AIDA_MULUNEH_EVERYBODY-KNOWS-ABOUT-MISSISSIPPI_2017.jpg',
+  'This-is-Where-I-am-Cover.jpg'
 ];
 
 const titles = [
-  'The Death of Socrates',
-  'Starry Night',
-  'The Great Wave off Kanagawa',
-  'Effect of Spring, Giverny',
-  'Mount Corcoran',
-  'A Sunday on La Grande Jatte'
+  'I IN THE OTHER',
+  'BOTH SIDES',
+  'THE DEW AT DAWN',
+  'The-barriers',
+  'EVERYBODY KNOWS ABOUT MISSISSIPPI',
+  'This is Where I am Cover'
 ];
 
 const artists = [
-  'Jacques-Louis David',
-  'Vincent Van Gogh',
-  'Katsushika Hokusai',
-  'Claude Monet',
-  'Albert Bierstadt',
-  'George Seurat'
+  'Aida Muluneh',
+  'Aida Muluneh',
+  'Aida Muluneh',
+  'Aida Muluneh',
+  'Aida Muluneh',
+  'Aida Muluneh',
 ];
 
 // Scene setup
@@ -51,6 +51,7 @@ renderer.toneMappingExposure = 1.2;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
+renderer.setClearColor(0x000000, 1); // pure black background
 
 // OrbitControls setup
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -68,7 +69,7 @@ composer.addPass(renderPass);
 
 const bloomPass = new UnrealBloomPass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
-  0.5,  // strength
+  0.7,  // strength
   0.4,  // radius
   0.85  // threshold
 );
@@ -78,7 +79,7 @@ const outputPass = new OutputPass();
 composer.addPass(outputPass);
 
 // Enhanced lighting setup
-const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+const ambientLight = new THREE.AmbientLight(0x404040, 1.0);
 scene.add(ambientLight);
 
 const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
@@ -94,7 +95,7 @@ directionalLight.shadow.camera.top = 10;
 directionalLight.shadow.camera.bottom = -10;
 scene.add(directionalLight);
 
-const spotlight = new THREE.SpotLight(0xffffff, 1.0, 15, Math.PI / 6, 0.5);
+const spotlight = new THREE.SpotLight(0xffffff, 1.2, 15, Math.PI / 6, 0.5);
 spotlight.position.set(0, 8, 0);
 spotlight.target.position.set(0, 0, -4);
 spotlight.castShadow = true;
@@ -103,16 +104,23 @@ spotlight.shadow.mapSize.height = 1024;
 scene.add(spotlight);
 scene.add(spotlight.target);
 
-const pointLight = new THREE.PointLight(0x4444ff, 0.5, 10);
+const pointLight = new THREE.PointLight(0x4444ff, 0.7, 10);
 pointLight.position.set(-5, 3, 5);
 scene.add(pointLight);
+
+// Add a soft fill point light on the right
+const fillLight = new THREE.PointLight(0xffffff, 0.7, 20);
+fillLight.position.set(7, 4, 4);
+scene.add(fillLight);
+
+// Add a soft hemisphere light for even fill
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x222233, 0.4);
+scene.add(hemiLight);
 
 // Texture loading
 const textureLoader = new THREE.TextureLoader();
 const leftArrowImage = textureLoader.load(`left.png`);
 const rightArrowImage = textureLoader.load(`right.png`);
-
-const canvasNormalMap = textureLoader.load('canvas-normal.jpg');
 
 // Gallery setup
 const root = new THREE.Object3D();
@@ -120,20 +128,25 @@ scene.add(root);
 
 const count = 6;
 const galleryObjects = [];
-const artworkSpotlights = []; // Array to store individual spotlights
+const artworkSpotlights = [];
 
 for (let i = 0; i < count; i++) {
-  const image = textureLoader.load(images[i]);
+  // Debug: log image path
+  console.log('Loading image:', images[i]);
+  const image = textureLoader.load(images[i], (tex) => {
+    console.log('Loaded texture:', images[i], tex);
+  });
 
   const baseNode = new THREE.Object3D();
   baseNode.rotation.y = 2 * Math.PI * (i / count);
 
+  // Frame: thinner, gray for debug
   const border = new THREE.Mesh(
-    new THREE.BoxGeometry(3.2, 2.2, 0.005),
+    new THREE.BoxGeometry(3.2, 3.2, 0.01),
     new THREE.MeshStandardMaterial({ 
-      color: 0x303030,
-      metalness: 0.3,
-      roughness: 0.7
+      color: 0x888888, // gray for debug
+      metalness: 0.7,
+      roughness: 0.4
     })
   );
   border.position.z = -4;
@@ -141,17 +154,18 @@ for (let i = 0; i < count; i++) {
   border.receiveShadow = true;
   baseNode.add(border);
 
+  // Artwork: smaller, further in front, fully diffuse
   const artworkMaterial = new THREE.MeshStandardMaterial({ 
     map: image,
-    metalness: 0.02,
-    roughness: 0.98
+    metalness: 0.0,
+    roughness: 1.0
   });
 
   const artwork = new THREE.Mesh(
-    new THREE.BoxGeometry(3, 2, 0.01),
+    new THREE.BoxGeometry(3.0 - 0.04, 3.0 - 0.04, 0.008), // slightly smaller than frame
     artworkMaterial
   );
-  artwork.position.z = -4;
+  artwork.position.z = -3.97; // further in front of the frame
   artwork.castShadow = true;
   artwork.receiveShadow = true;
   baseNode.add(artwork);
@@ -170,7 +184,7 @@ for (let i = 0; i < count; i++) {
   );
   leftArrow.name = 'left';
   leftArrow.userData = i;
-  leftArrow.position.set(2.9, 0, -4);
+  leftArrow.position.set(2.9, 0, -3.9); // original position for 3:2 frame
   leftArrow.castShadow = true;
   baseNode.add(leftArrow);
 
@@ -188,14 +202,14 @@ for (let i = 0; i < count; i++) {
   );
   rightArrow.name = 'right';
   rightArrow.userData = i;
-  rightArrow.position.set(-2.9, 0, -4);
+  rightArrow.position.set(-2.9, 0, -3.9); // original position for 3:2 frame
   rightArrow.castShadow = true;
   baseNode.add(rightArrow);
 
   // Add individual spotlight for each artwork
-  const artworkSpotlight = new THREE.SpotLight(0xffffff, 1.2, 10, Math.PI / 6, 0.2);
-  artworkSpotlight.position.set(0, 4, -1); // Position higher and closer to artwork
-  artworkSpotlight.target.position.set(0, 0, -4); // Target the artwork
+  const artworkSpotlight = new THREE.SpotLight(0xffffff, 2.5, 12, Math.PI / 6, 0.2);
+  artworkSpotlight.position.set(0, 4, -1); // Always the same relative position
+  artworkSpotlight.target.position.set(0, 0, -4); // Always the same target
   artworkSpotlight.castShadow = true;
   artworkSpotlight.shadow.mapSize.width = 512;
   artworkSpotlight.shadow.mapSize.height = 512;
@@ -297,21 +311,11 @@ function animate() {
   const time = Date.now() * 0.001;
   pointLight.position.x = Math.sin(time) * 5;
   pointLight.position.z = Math.cos(time) * 5;
-  
-  // Animate spotlight intensity
-  spotlight.intensity = 1.0 + Math.sin(time * 2) * 0.2;
+  pointLight.color.setHSL((Math.sin(time * 0.2) + 1) / 2, 0.5, 0.7);
   
   // Animate individual artwork spotlights
-  const normalizedRotation = ((root.rotation.y % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-  const currentIndex = Math.round((normalizedRotation / (2 * Math.PI)) * count) % count;
-  
   artworkSpotlights.forEach((spotlight, index) => {
-    // Create a subtle pulsing effect for the currently focused artwork
-    if (index === currentIndex) {
-      spotlight.intensity = 1.5 + Math.sin(time * 3) * 0.3; // Brighter focused artwork
-    } else {
-      spotlight.intensity = 0.8; // Brighter base intensity for all artworks
-    }
+    spotlight.intensity = 2.5;
   });
   
   composer.render();
@@ -424,7 +428,17 @@ window.addEventListener('click', (ev) => {
 
   const raycaster = new THREE.Raycaster();
   raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObjects(root.children, true);
+
+  // Only check for arrow meshes
+  const arrowMeshes = [];
+  root.children.forEach(baseNode => {
+    baseNode.children.forEach(child => {
+      if (child.name === 'left' || child.name === 'right') {
+        arrowMeshes.push(child);
+      }
+    });
+  });
+  const intersects = raycaster.intersectObjects(arrowMeshes, true);
 
   if (intersects.length > 0) {
     const clickedObject = intersects[0].object;
@@ -467,7 +481,6 @@ window.addEventListener('keydown', (ev) => {
   }
 });
 
-// Window resize
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
@@ -488,10 +501,12 @@ document.getElementById('artist').innerText = artists[0];
 // Start animation
 animate();
 
+// Tooltip logic for painting info
 let highlightedBorder = null;
 let originalBorderColor = null;
+let tooltip = document.getElementById('tooltip');
+let lastHighlightedArtwork = null;
 
-// Raycasting for painting hover highlight
 window.addEventListener('mousemove', (ev) => {
   const mouse = new THREE.Vector2();
   mouse.x = (ev.clientX / window.innerWidth) * 2 - 1;
@@ -500,20 +515,26 @@ window.addEventListener('mousemove', (ev) => {
   const raycaster = new THREE.Raycaster();
   raycaster.setFromCamera(mouse, camera);
 
-  // Collect all border meshes
+  // Collect all border meshes and artwork meshes
   const borderMeshes = [];
-  root.children.forEach(baseNode => {
+  const artworkMeshes = [];
+  root.children.forEach((baseNode, idx) => {
     baseNode.children.forEach(child => {
-      if (child.geometry && child.geometry.type === 'BoxGeometry' && child.material && child.material.color && child.geometry.parameters.depth === 0.005) {
-        borderMeshes.push(child);
+      if (child.geometry && child.geometry.type === 'BoxGeometry' && child.material && child.material.color && child.geometry.parameters.depth === 0.01) {
+        borderMeshes.push({ mesh: child, index: idx, baseNode });
+      }
+      // Find artwork mesh by size (smaller than frame)
+      if (child.geometry && child.geometry.type === 'BoxGeometry' && child.material && child.material.map && child.geometry.parameters.width < 3.2) {
+        artworkMeshes.push({ mesh: child, index: idx, baseNode });
       }
     });
   });
 
-  const intersects = raycaster.intersectObjects(borderMeshes, false);
+  const intersects = raycaster.intersectObjects(borderMeshes.map(b => b.mesh), false);
 
   if (intersects.length > 0) {
     const border = intersects[0].object;
+    const borderObj = borderMeshes.find(b => b.mesh === border);
     if (highlightedBorder !== border) {
       // Remove highlight from previous
       if (highlightedBorder && originalBorderColor) {
@@ -524,6 +545,27 @@ window.addEventListener('mousemove', (ev) => {
       border.material.color.set(0xffff00); // Yellow highlight
       highlightedBorder = border;
     }
+    // Show tooltip
+    tooltip.style.display = 'block';
+    tooltip.innerHTML = `<b>${titles[borderObj.index]}</b><br><i>${artists[borderObj.index]}</i>`;
+    tooltip.style.left = (ev.clientX + 18) + 'px';
+    tooltip.style.top = (ev.clientY + 18) + 'px';
+
+    // Pop up the painting (scale and move forward)
+    const artworkObj = artworkMeshes.find(a => a.index === borderObj.index);
+    if (artworkObj && lastHighlightedArtwork !== artworkObj.mesh) {
+      // Reset previous
+      if (lastHighlightedArtwork) {
+        lastHighlightedArtwork.scale.set(1, 1, 1);
+        lastHighlightedArtwork.position.z = -3.97;
+        lastHighlightedArtwork.material.emissive.set(0x000000);
+      }
+      // Animate pop up
+      artworkObj.mesh.scale.set(1.04, 1.04, 1.04);
+      artworkObj.mesh.position.z = -3.93;
+      artworkObj.mesh.material.emissive.set(0x333300); // much softer glow
+      lastHighlightedArtwork = artworkObj.mesh;
+    }
   } else {
     // Remove highlight if not hovering any
     if (highlightedBorder && originalBorderColor) {
@@ -531,11 +573,13 @@ window.addEventListener('mousemove', (ev) => {
       highlightedBorder = null;
       originalBorderColor = null;
     }
+    tooltip.style.display = 'none';
+    // Reset pop up
+    if (lastHighlightedArtwork) {
+      lastHighlightedArtwork.scale.set(1, 1, 1);
+      lastHighlightedArtwork.position.z = -3.97;
+      lastHighlightedArtwork.material.emissive.set(0x000000);
+      lastHighlightedArtwork = null;
+    }
   }
 });
-
-// Lighting tweaks
-ambientLight.intensity = 1.2;
-directionalLight.intensity = 2.0;
-spotlight.intensity = 2.5;
-pointLight.intensity = 2.0;
